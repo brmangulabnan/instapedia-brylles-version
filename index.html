@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Instapedia</title>
+  <meta name="description" content="Take photos with Wikipedia's &lt;figure&gt; picture frame.">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: sans-serif;
+      font-size: 14.144px;
+      line-height: 19.8px;
+      background: #fafafa;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 20px;
+      color: rgb(32, 33, 34);
+    }
+
+    /* body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: url('background.png') center / cover no-repeat;
+    opacity: 0.08;
+    z-index: 0;
+    pointer-events: none;
+  } */
+
+    body>* {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Wikipedia figure — matches real computed styles */
+    figure.mw-default-size {
+      background: rgb(248, 249, 250);
+      border: 1px solid rgb(200, 204, 209);
+      border-collapse: collapse;
+      display: table;
+      text-align: center;
+      max-width: 300px;
+      width: 100%;
+      min-width: 100px;
+    }
+
+    .mw-file-description {
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      background: #eee;
+      aspect-ratio: 250 / 350;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin: 3px;
+      border: solid 1px #c8ccd1;
+    }
+
+    .mw-file-element {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .mw-file-description.has-image .mw-file-element {
+      display: block;
+    }
+
+    .placeholder {
+      color: #72777d;
+      font-family: sans-serif;
+      font-size: 14px;
+      text-align: center;
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    .placeholder svg {
+      display: block;
+      margin: 0 auto 12px;
+      opacity: 0.4;
+    }
+
+    .has-image .placeholder {
+      display: none;
+    }
+
+    figcaption {
+      position: relative;
+      padding: 6px;
+      padding-right: 24px;
+      font-family: sans-serif;
+      font-size: 14.144px;
+      line-height: 19.8px;
+      color: rgb(32, 33, 34);
+      background: rgb(248, 249, 250);
+      caption-side: bottom;
+      text-align: left;
+    }
+
+    figcaption::before {
+      content: '';
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 13px;
+      height: 9px;
+      background: url('file-thumb-icon.svg') no-repeat center / contain;
+    }
+
+    /* Caption input */
+    .caption-input {
+      width: 100%;
+      max-width: 360px;
+      margin-top: 16px;
+      font-family: sans-serif;
+      font-size: 14.144px;
+      line-height: 19.8px;
+      padding: 8px 10px;
+      border: 1px solid #a2a9b1;
+      background: #fff;
+      color: rgb(32, 33, 34);
+      outline: none;
+    }
+
+    .caption-input:focus {
+      border-color: #3366cc;
+    }
+
+    .caption-input::placeholder {
+      color: #999;
+    }
+
+    /* Buttons */
+    .actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      font-family: sans-serif;
+      font-size: 14px;
+      padding: 8px 16px;
+      border: 1px solid #a2a9b1;
+      background: #f8f9fa;
+      color: rgb(32, 33, 34);
+      cursor: pointer;
+      border-radius: 2px;
+    }
+
+    button:active {
+      background: #eaecf0;
+    }
+
+    .btn-primary {
+      background: #3366cc;
+      color: #fff;
+      border-color: #3366cc;
+    }
+
+    .btn-primary:active {
+      background: #2a4b8d;
+    }
+
+    /* Hidden file input */
+    #cameraInput {
+      display: none;
+    }
+
+    /* Rendering canvas (off-screen) */
+    #renderCanvas {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+    }
+
+    .help {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background-color: white;
+    }
+
+    .help-toggle {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid rgb(32, 33, 34);
+      background: rgb(248, 249, 250);
+      font-family: sans-serif;
+      font-size: 14.144px;
+      line-height: 19.8px;
+      color: rgb(32, 33, 34);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+
+    .help-text {
+      display: none;
+      margin-top: 8px;
+      font-family: sans-serif;
+      font-size: 14.144px;
+      line-height: 19.8px;
+      color: rgb(32, 33, 34);
+    }
+
+    .help.open .help-text {
+      display: block;
+    }
+
+    .birthday {
+      position: fixed;
+      bottom: 12px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-family: sans-serif;
+      font-size: 12px;
+      color: #999;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="help" id="help">
+    <button class="help-toggle" id="helpToggle">?</button>
+    <div class="help-text">
+      1. Tap image to take photo<br>
+      2. Add caption below<br>
+      3. Use [[text]] for links<br>
+      4. Save and <a href="https://www.are.na/elliott-cost/instapedia" style="color:rgb(51,102,204)">share</a>
+    </div>
+  </div>
+
+  <figure class="mw-default-size" id="wikiFigure">
+    <a class="mw-file-description" id="figureInner">
+      <div class="placeholder">
+        <img src="favicon.png" width="48" height="48" alt=""
+          style="display:block;margin:0 auto 12px;opacity:0.4;filter:grayscale(100%);">
+        Tap to take a photo
+      </div>
+      <img id="photoImg" class="mw-file-element" width="250" height="350" alt="Your photo">
+    </a>
+    <figcaption>
+      <span id="captionDisplay">Your caption here</span>
+    </figcaption>
+  </figure>
+
+  <input class="caption-input" id="captionInput" type="text" placeholder="Enter a caption..." maxlength="200">
+
+  <div class="actions">
+    <button id="btnRetake">Retake</button>
+    <button class="btn-primary" id="btnSave">Save Image</button>
+  </div>
+
+  <input type="file" id="cameraInput" accept="image/*">
+  <canvas id="renderCanvas"></canvas>
+  <div class="birthday">fork from elliott.computer / i wanted to upload photos from my gallery vs. using my phone's
+    system camera / happy birthday roombaghost</div>
+
+  <script>
+    const cameraInput = document.getElementById('cameraInput');
+    const photoImg = document.getElementById('photoImg');
+    const figureInner = document.getElementById('figureInner');
+    const captionInput = document.getElementById('captionInput');
+    const captionDisplay = document.getElementById('captionDisplay');
+    const btnRetake = document.getElementById('btnRetake');
+    const btnSave = document.getElementById('btnSave');
+
+    // Help toggle
+    document.getElementById('helpToggle').addEventListener('click', () => {
+      document.getElementById('help').classList.toggle('open');
+    });
+
+    // Tap the figure to open camera
+    figureInner.addEventListener('click', () => {
+      cameraInput.click();
+    });
+
+    // Handle photo capture
+    cameraInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        photoImg.src = ev.target.result;
+        figureInner.classList.add('has-image');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Live caption update
+    captionInput.addEventListener('input', () => {
+      const text = captionInput.value.trim();
+      if (!text) {
+        captionDisplay.textContent = 'Your caption here';
+      } else {
+        captionDisplay.innerHTML = text.replace(/\[\[(.+?)\]\]/g, '<a style="color:rgb(51,102,204)">$1</a>');
+      }
+    });
+
+    // Retake
+    btnRetake.addEventListener('click', () => {
+      cameraInput.value = '';
+      photoImg.src = '';
+      figureInner.classList.remove('has-image');
+    });
+
+    // Save as image — renders the exact DOM to canvas
+    btnSave.addEventListener('click', async () => {
+      if (!figureInner.classList.contains('has-image')) {
+        alert('Take a photo first!');
+        return;
+      }
+
+      const figure = document.getElementById('wikiFigure');
+      const scale = 3;
+      const margin = 24 * scale;
+      const figRect = figure.getBoundingClientRect();
+      const innerRect = figureInner.getBoundingClientRect();
+      const captionEl = figure.querySelector('figcaption');
+      const captionRect = captionEl.getBoundingClientRect();
+      const canvas = document.getElementById('renderCanvas');
+      const ctx = canvas.getContext('2d');
+
+      const figW = figRect.width * scale;
+      const figH = figRect.height * scale;
+      const w = figW + margin * 2;
+      const h = figH + margin * 2;
+      canvas.width = w;
+      canvas.height = h;
+
+      // White page background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+
+      const ox = margin; // figure origin x
+      const oy = margin; // figure origin y
+      const s = scale;
+
+      // Figure background
+      ctx.fillStyle = 'rgb(248, 249, 250)';
+      ctx.fillRect(ox, oy, figW, figH);
+
+      // Figure border (all sides)
+      ctx.strokeStyle = 'rgb(200, 204, 209)';
+      ctx.lineWidth = s;
+      ctx.strokeRect(ox + 0.5 * s, oy + 0.5 * s, figW - s, figH - s);
+
+      // Image area
+      const imgMargin = 3 * s;
+      const imgX = ox + (innerRect.left - figRect.left) * s;
+      const imgY = oy + (innerRect.top - figRect.top) * s;
+      const imgW = innerRect.width * s;
+      const imgH = innerRect.height * s;
+
+      // Draw photo (cover fit)
+      const imgEl = new Image();
+      imgEl.src = photoImg.src;
+      await new Promise(r => { imgEl.onload = r; });
+
+      const srcAspect = imgEl.naturalWidth / imgEl.naturalHeight;
+      const dstAspect = imgW / imgH;
+      let sx, sy, sw, sh;
+      if (srcAspect > dstAspect) {
+        sh = imgEl.naturalHeight;
+        sw = sh * dstAspect;
+        sx = (imgEl.naturalWidth - sw) / 2;
+        sy = 0;
+      } else {
+        sw = imgEl.naturalWidth;
+        sh = sw / dstAspect;
+        sx = 0;
+        sy = (imgEl.naturalHeight - sh) / 2;
+      }
+      ctx.drawImage(imgEl, sx, sy, sw, sh, imgX, imgY, imgW, imgH);
+
+      // Image border (drawn after photo so it's on top)
+      ctx.strokeStyle = '#c8ccd1';
+      ctx.lineWidth = s;
+      ctx.strokeRect(imgX + 0.5 * s, imgY + 0.5 * s, imgW - s, imgH - s);
+
+      // Caption area
+      const capX = ox + (captionRect.left - figRect.left) * s;
+      const capY = oy + (captionRect.top - figRect.top) * s;
+      const capW = captionRect.width * s;
+      const capH = captionRect.height * s;
+
+      // Caption background
+      ctx.fillStyle = 'rgb(248, 249, 250)';
+      ctx.fillRect(capX, capY, capW, capH);
+
+      // Draw icon (load SVG as image)
+      const iconImg = new Image();
+      iconImg.src = 'file-thumb-icon.svg';
+      await new Promise(r => { iconImg.onload = r; });
+      const iconW = 13 * s;
+      const iconH = 9 * s;
+      const iconX = capX + capW - 6 * s - iconW;
+      const iconY = capY + 6 * s;
+      ctx.drawImage(iconImg, iconX, iconY, iconW, iconH);
+
+      // Draw caption text with link colors
+      ctx.font = `${14.144 * s}px sans-serif`;
+      ctx.textBaseline = 'top';
+      const lineHeight = 19.8 * s;
+      const textX = capX + 6 * s;
+      const textY = capY + 6 * s;
+      const maxTextW = capW - 12 * s - iconW - 6 * s;
+
+      // Parse caption spans/links to preserve colors
+      const captionNodes = captionEl.querySelector('span').childNodes;
+      const segments = [];
+      captionNodes.forEach(node => {
+        if (node.nodeType === 3) {
+          segments.push({ text: node.textContent, color: 'rgb(32, 33, 34)' });
+        } else if (node.tagName === 'A') {
+          segments.push({ text: node.textContent, color: 'rgb(51, 102, 204)' });
+        }
+      });
+
+      // Word-wrap with color segments
+      let curX = 0;
+      let curLine = 0;
+      for (const seg of segments) {
+        ctx.fillStyle = seg.color;
+        const words = seg.text.split(/(\s+)/);
+        for (const word of words) {
+          if (!word) continue;
+          const wordW = ctx.measureText(word).width;
+          if (curX + wordW > maxTextW && curX > 0 && word.trim()) {
+            curLine++;
+            curX = 0;
+          }
+          ctx.fillText(word, textX + curX, textY + curLine * lineHeight);
+          curX += wordW;
+        }
+      }
+
+      // Export
+      canvas.toBlob((blob) => {
+        if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+          const file = new File([blob], 'wiki-photo.png', { type: 'image/png' });
+          navigator.share({ files: [file] }).catch(() => downloadBlob(blob));
+        } else {
+          downloadBlob(blob);
+        }
+      }, 'image/png');
+    });
+
+    function downloadBlob(blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'wiki-photo.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+
+</html>
