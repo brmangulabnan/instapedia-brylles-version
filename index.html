@@ -36,7 +36,7 @@
     opacity: 0.08;
     z-index: 0;
     pointer-events: none;
-  } */
+    } */
 
     body>* {
       position: relative;
@@ -279,8 +279,9 @@
 
   <input type="file" id="cameraInput" accept="image/*">
   <canvas id="renderCanvas"></canvas>
-  <div class="birthday">fork from elliott.computer / i wanted to upload photos from my gallery vs. using my phone's
-    system camera / happy birthday roombaghost</div>
+  <div class="birthday">fork from <a href="elliott.computer">elliott.computer</a> / i wanted to upload photos from my
+    gallery vs. using my phone's
+    stock camera / happy birthday roombaghost</div>
 
   <script>
     const cameraInput = document.getElementById('cameraInput');
@@ -308,6 +309,11 @@
 
       const reader = new FileReader();
       reader.onload = (ev) => {
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          figureInner.style.aspectRatio = tempImg.naturalWidth + ' / ' + tempImg.naturalHeight;
+        };
+        tempImg.src = ev.target.result;
         photoImg.src = ev.target.result;
         figureInner.classList.add('has-image');
       };
@@ -329,6 +335,7 @@
       cameraInput.value = '';
       photoImg.src = '';
       figureInner.classList.remove('has-image');
+      figureInner.style.aspectRatio = '250 / 350';
     });
 
     // Save as image — renders the exact DOM to canvas
